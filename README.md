@@ -24,7 +24,9 @@ npm install fulltext-search-kit
 
 or using yarn:
 
+```bash
 yarn add fulltext-search-kit
+```
 
 ## Usage
 
