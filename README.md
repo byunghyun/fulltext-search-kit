@@ -2,9 +2,10 @@
 
 ![npm](https://img.shields.io/npm/v/fulltext-search-kit)
 ![license](https://img.shields.io/npm/l/fulltext-search-kit)
-![build](https://img.shields.io/travis/your-username/fulltext-search-kit)
 
-### A utility library for full-text search in TypeScript.
+- A utility library for full-text search in TypeScript.
+- I have no intention of removing this package until npm ceases to exist.
+- 한국어 초성 검색도 지원합니다.
 
 ## Features
 
