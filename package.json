@@ -1,6 +1,6 @@
 {
   "name": "fulltext-search-kit",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "description": "A utility library for full-text search in TypeScript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,9 +12,9 @@
   "keywords": [],
   "repository": {
     "type": "git",
-    "url": "https://github.com/byunghyune/fulltext-search-kit.git"
+    "url": "https://github.com/byunghyun/fulltext-search-kit.git"
   },
-  "homepage": "https://github.com/byunghyun",
+  "homepage": "https://github.com/byunghyun/fulltext-search-kit.git",
   "author": {
     "name": "byunghyun",
     "email": "eer3481@gmail.com",
