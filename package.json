@@ -9,7 +9,21 @@
     "lint": "eslint 'src/**/*.{ts,tsx}'",
     "format": "prettier --write 'src/**/*.{ts,tsx}'"
   },
-  "keywords": [],
+  "keywords": [
+    "full-text-search",
+    "text-search",
+    "search",
+    "typescript",
+    "string-search",
+    "text-processing",
+    "search-kit",
+    "search-utils",
+    "korean-search",
+    "string-matching",
+    "regex",
+    "full-text",
+    "text-analysis"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/byunghyun/fulltext-search-kit.git"
