@@ -69,6 +69,13 @@ Parameters
 
 - data (Array<T>): The data to search through.
 - searchRequirement (Array<{ value: string; removeCharacters?: string; }>): The requirements for the search.
+
+```example
+  text: 010-0000-0000,
+  removeCharacters: '-'
+  return: 01000000000
+```
+
 - searchFilterText (string): The text to filter the data by.
 
 Returns
