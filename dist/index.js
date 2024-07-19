@@ -9,14 +9,14 @@ var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
     return to.concat(ar || Array.prototype.slice.call(from));
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createInitialLetterMatcher = exports.characterPatternCheckerCore = exports.escapeRegExp = exports.fullTextSearchCore = exports.returnFullTextSearchFilteredData = void 0;
+exports.returnFullTextSearchFilteredData = void 0;
 var returnFullTextSearchFilteredData = function (_a) {
     var data = _a.data, searchRequirement = _a.searchRequirement, searchFilterText = _a.searchFilterText;
     if (!searchFilterText) {
         return data;
     }
     return data.filter(function (item) {
-        return (0, exports.fullTextSearchCore)(item, searchRequirement, searchFilterText);
+        return fullTextSearchCore(item, searchRequirement, searchFilterText);
     });
 };
 exports.returnFullTextSearchFilteredData = returnFullTextSearchFilteredData;
@@ -32,7 +32,7 @@ var fullTextSearchCore = function (dataItem, searchRequirement, searchFilterText
                 };
                 return __spreadArray(__spreadArray([], acc, true), [
                     convertedText().includes(searchFilterText) ||
-                        (0, exports.createInitialLetterMatcher)(searchFilterText).test(convertedText()),
+                        createInitialLetterMatcher(searchFilterText).test(convertedText()),
                 ], false);
             }, []);
             return checkRequirements.includes(true);
@@ -41,16 +41,14 @@ var fullTextSearchCore = function (dataItem, searchRequirement, searchFilterText
         var isKorean = /[ㄱ-ㅎ가-힣]/.test(searchFilterText);
         if (isKorean) {
             return (value.includes(searchFilterText) ||
-                (0, exports.createInitialLetterMatcher)(searchFilterText).test(value));
+                createInitialLetterMatcher(searchFilterText).test(value));
         }
-        return new RegExp((0, exports.escapeRegExp)(searchFilterText), 'i').test(value);
+        return new RegExp(escapeRegExp(searchFilterText), 'i').test(value);
     });
 };
-exports.fullTextSearchCore = fullTextSearchCore;
 var escapeRegExp = function (string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
-exports.escapeRegExp = escapeRegExp;
 var charCodeAts = {
     ㄱ: '가'.charCodeAt(0),
     ㄲ: '까'.charCodeAt(0),
@@ -80,14 +78,12 @@ var characterPatternCheckerCore = function (character) {
         var end = begin + 587;
         return "[".concat(character, "\\u").concat(begin.toString(16), "-\\u").concat(end.toString(16), "]");
     }
-    return (0, exports.escapeRegExp)(character);
+    return escapeRegExp(character);
 };
-exports.characterPatternCheckerCore = characterPatternCheckerCore;
 var createInitialLetterMatcher = function (searchText) {
     var pattern = searchText
         .split('')
-        .map(function (item) { return (0, exports.characterPatternCheckerCore)(item); })
+        .map(function (item) { return characterPatternCheckerCore(item); })
         .join('.*?');
     return new RegExp(pattern);
 };
-exports.createInitialLetterMatcher = createInitialLetterMatcher;
