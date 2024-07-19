@@ -5,7 +5,6 @@
 
 - A utility library for full-text search in TypeScript.
 - I have no intention of removing this package until npm ceases to exist.
-- 한국어 초성 검색도 지원합니다.
 
 ## Features
 
@@ -13,6 +12,7 @@
 - Supports multiple search requirements
 - Handles special character removal
 - Optimized for Korean text
+- 한국어 초성 검색도 지원합니다.
 
 ## Installation
 
