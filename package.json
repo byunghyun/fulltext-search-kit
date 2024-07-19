@@ -1,6 +1,6 @@
 {
   "name": "fulltext-search-kit",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "A utility library for full-text search in TypeScript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
