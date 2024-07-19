@@ -50,7 +50,7 @@ const data = [
 const searchRequirement = [{ value: 'name' }];
 const searchFilterText = 'Jane';
 
-const filteredData = returnFullTextSearchFilteredData({
+const filteredData = returnFullTextSearchFilteredData<T>({
   data,
   searchRequirement,
   searchFilterText,
