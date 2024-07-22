@@ -14,6 +14,10 @@
 - Optimized for Korean text
 - 한국어 초성 검색도 지원합니다.
 
+## Live Demo
+
+[demo](https://codesandbox.io/p/devbox/fulltext-search-kit-forked-jgttr4?file=%2Fpackage.json%3A5%2C16)
+
 ## Installation
 
 You can install the library using npm:
