@@ -22,7 +22,7 @@ export const returnFullTextSearchFilteredData = <
 };
 
 const fullTextSearchCore = <T extends { [Key: string]: any }>(
-  dataItem: T | Array<T>,
+  dataItem: T,
   searchRequirement: Array<{
     value: string;
     removeCharacters?: string;
@@ -30,31 +30,21 @@ const fullTextSearchCore = <T extends { [Key: string]: any }>(
   searchFilterText: string,
 ): boolean => {
   return searchRequirement.some((searchItem) => {
-    if (Array.isArray(dataItem)) {
-      const checkRequirements = dataItem.reduce<Array<boolean>>((acc, cur) => {
-        const convertedText = () => {
-          if (cur?.removeCharacters) {
-            return cur[searchItem.value].replaceAll(cur.removeCharacters, '');
-          }
-          return cur[searchItem.value];
-        };
-        return [
-          ...acc,
-          convertedText().includes(searchFilterText) ||
-            createInitialLetterMatcher(searchFilterText).test(convertedText()),
-        ];
-      }, []);
-      return checkRequirements.includes(true);
-    }
     const value = dataItem[searchItem.value];
+    if (typeof value !== 'string') return false;
+    
+    const convertedText = searchItem.removeCharacters
+      ? value.replace(new RegExp(`[${escapeRegExp(searchItem.removeCharacters)}]`, 'g'), '')
+      : value;
+
     const isKorean = /[ㄱ-ㅎ가-힣]/.test(searchFilterText);
     if (isKorean) {
       return (
-        value.includes(searchFilterText) ||
-        createInitialLetterMatcher(searchFilterText).test(value)
+        convertedText.includes(searchFilterText) ||
+        createInitialLetterMatcher(searchFilterText).test(convertedText)
       );
     }
-    return new RegExp(escapeRegExp(searchFilterText), 'i').test(value);
+    return new RegExp(escapeRegExp(searchFilterText), 'i').test(convertedText);
   });
 };
 
