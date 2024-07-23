@@ -48,13 +48,17 @@ returnFullTextSearchFilteredData function:
 
 ```typescript
 const data = [
-  { name: 'John Doe', age: 30 },
-  { name: 'Jane Smith', age: 25 },
-  { name: 'Alice Johnson', age: 35 },
+  { name: 'John Doe01012', age: 30, phoneNumber: '010-2345-7890' },
+  { name: 'Jane Smith01023', age: 25, phoneNumber: '010-1234-5678' },
+  { name: 'Alice Johnson01023', age: 35, phoneNumber: '010-5500-4455' },
 ];
 
-const searchRequirement = [{ value: 'name' }];
+const searchRequirement = [
+  { value: 'name' },
+  { value: 'phoneNumber', removeCharacters: '-' },
+];
 const searchFilterText = 'Jane';
+// const searchFilterText = '010123';
 
 const filteredData = returnFullTextSearchFilteredData<T>({
   data,

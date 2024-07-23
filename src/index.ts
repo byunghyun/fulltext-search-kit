@@ -32,11 +32,14 @@ const fullTextSearchCore = <T extends { [Key: string]: any }>(
   return searchRequirement.some((searchItem) => {
     const value = dataItem[searchItem.value];
     if (typeof value !== 'string') return false;
-    
-    const convertedText = searchItem.removeCharacters
-      ? value.replace(new RegExp(`[${escapeRegExp(searchItem.removeCharacters)}]`, 'g'), '')
+    console.info('value', value);
+    const convertedText = searchItem?.removeCharacters
+      ? value.replace(
+          new RegExp(`[${escapeRegExp(searchItem.removeCharacters)}]`, 'g'),
+          '',
+        )
       : value;
-
+    console.info('convertedText', convertedText);
     const isKorean = /[ㄱ-ㅎ가-힣]/.test(searchFilterText);
     if (isKorean) {
       return (
