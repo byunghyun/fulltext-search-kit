@@ -39,8 +39,12 @@ yarn add fulltext-search-kit
 To use the library, import the returnFullTextSearchFilteredData function:
 
 ```typescript
-import { returnFullTextSearchFilteredData } from 'fulltext-search-kit';
+import { fullTextSearch } from 'fulltext-search-kit';
 ```
+
+⚠️ [Deprecated Notice]
+The returnFullTextSearchFilteredData function will be deprecated in future versions.
+Please use the fullTextSearch function instead for all new development.
 
 Example
 Here is a simple example demonstrating how to use the
@@ -60,7 +64,7 @@ const searchRequirement = [
 const searchFilterText = 'Jane';
 // const searchFilterText = '010123';
 
-const filteredData = returnFullTextSearchFilteredData<T>({
+const filteredData = fullTextSearch<T>({
   data,
   searchRequirement,
   searchFilterText,
@@ -71,7 +75,7 @@ console.log(filteredData);
 
 ## API
 
-### returnFullTextSearchFilteredData
+### fullTextSearch
 
 Filters an array of objects based on the search requirements and filter text.
 

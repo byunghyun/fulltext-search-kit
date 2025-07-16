@@ -1,6 +1,30 @@
+/**
+ * @deprecated Use `fullTextSearch` instead.
+ */
 export const returnFullTextSearchFilteredData = <
   T extends { [Key: string]: any },
 >({
+  data,
+  searchRequirement,
+  searchFilterText,
+}: {
+  data: Array<T>;
+  searchRequirement: Array<{
+    value: string;
+    removeCharacters?: string;
+  }>;
+  searchFilterText: string;
+}) => {
+  if (!searchFilterText) {
+    return data;
+  }
+
+  return data.filter((item) => {
+    return fullTextSearchCore(item, searchRequirement, searchFilterText);
+  });
+};
+
+export const fullTextSearch = <T extends { [Key: string]: any }>({
   data,
   searchRequirement,
   searchFilterText,
