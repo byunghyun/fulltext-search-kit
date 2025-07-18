@@ -24,7 +24,7 @@ export const returnFullTextSearchFilteredData = <
   });
 };
 
-// 최신 fullTextSearch (권장 사용)
+// 최신 검색 함수
 export const fullTextSearch = <T extends { [Key: string]: any }>({
   data,
   searchRequirement,
@@ -41,7 +41,7 @@ export const fullTextSearch = <T extends { [Key: string]: any }>({
   });
 };
 
-// 레거시 단일 문자열 검색용 core
+// 레거시 core
 const fullTextSearchCoreLegacy = <T extends { [Key: string]: any }>(
   dataItem: T,
   searchRequirement: Array<{
@@ -61,8 +61,9 @@ const fullTextSearchCoreLegacy = <T extends { [Key: string]: any }>(
         )
       : value;
 
-    const isKorean = /[ㄱ-ㅎ가-힣]/.test(searchFilterText);
-    if (isKorean) {
+    const isPureInitial = isPureChosung(searchFilterText);
+
+    if (isPureInitial) {
       const { list } = getInitialsListWithSpaces(convertedText);
       const initialsWithSpace = list.join(' ');
       return initialsWithSpace.includes(searchFilterText);
@@ -72,7 +73,7 @@ const fullTextSearchCoreLegacy = <T extends { [Key: string]: any }>(
   });
 };
 
-// 최신 다중 키워드용 core
+// 최신 core (다중 키워드 AND 조건)
 const fullTextSearchCore = <T extends { [Key: string]: any }>(
   dataItem: T,
   searchRequirement: Array<{
@@ -95,10 +96,10 @@ const fullTextSearchCore = <T extends { [Key: string]: any }>(
         )
       : value;
 
-    const isMatched = keywords.some((keyword) => {
-      const isKorean = /[ㄱ-ㅎ가-힣]/.test(keyword);
+    return keywords.some((keyword) => {
+      const isPureInitial = isPureChosung(keyword);
 
-      if (isKorean) {
+      if (isPureInitial) {
         const { list } = getInitialsListWithSpaces(convertedText);
         const initialsWithSpace = list.join(' ');
         return initialsWithSpace.includes(keyword);
@@ -106,9 +107,6 @@ const fullTextSearchCore = <T extends { [Key: string]: any }>(
 
       return new RegExp(escapeRegExp(keyword), 'i').test(convertedText);
     });
-
-    // 핵심 조건: 값이 있는데 매치 안 되면 false
-    return isMatched;
   });
 };
 
@@ -131,6 +129,9 @@ const getInitialsListWithSpaces = (text: string): { list: string[] } => {
 
   return { list };
 };
+
+// 초성인지 판단 (정확하게)
+const isPureChosung = (str: string): boolean => /^[ㄱ-ㅎ\s]+$/.test(str);
 
 // 정규식 escape 유틸
 const escapeRegExp = (string: string) => {
