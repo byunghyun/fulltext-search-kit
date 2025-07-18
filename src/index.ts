@@ -1,191 +1,180 @@
-/**
- * @deprecated Use `fullTextSearch` instead.
- */
-export const returnFullTextSearchFilteredData = <
-  T extends { [Key: string]: any },
->({
+export type FullTextSearchRequirement<T> = {
+  value: keyof T;
+  keywords: string[];
+};
+
+function escapeRegExp(str: string) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function isKorean(char: string) {
+  return /[가-힣ㄱ-ㅎㅏ-ㅣ]/.test(char);
+}
+
+function getInitialsListWithSpaces(text: string) {
+  const INITIALS = [
+    'ㄱ',
+    'ㄲ',
+    'ㄴ',
+    'ㄷ',
+    'ㄸ',
+    'ㄹ',
+    'ㅁ',
+    'ㅂ',
+    'ㅃ',
+    'ㅅ',
+    'ㅆ',
+    'ㅇ',
+    'ㅈ',
+    'ㅉ',
+    'ㅊ',
+    'ㅋ',
+    'ㅌ',
+    'ㅍ',
+    'ㅎ',
+  ];
+  const result: string[] = [];
+  const positions: number[] = [];
+
+  let offset = 0;
+
+  for (const char of text) {
+    const code = char.charCodeAt(0);
+    if (code >= 0xac00 && code <= 0xd7a3) {
+      const index = Math.floor((code - 0xac00) / 588);
+      result.push(INITIALS[index]);
+      positions.push(offset);
+    } else if (/^[ㄱ-ㅎ]$/.test(char)) {
+      result.push(char);
+      positions.push(offset);
+    }
+    offset += char.length;
+  }
+
+  return { list: result, positions };
+}
+
+function convertToSearchableText(text: string) {
+  return text
+    .replace(/\s/g, '') // remove spaces
+    .normalize('NFC'); // normalize Korean
+}
+
+function matchKeyword(text: string, keyword: string) {
+  const normalizedText = convertToSearchableText(text);
+  const normalizedKeyword = convertToSearchableText(keyword);
+
+  // 기본 완성형 비교
+  if (normalizedText.includes(normalizedKeyword)) {
+    return true;
+  }
+
+  // 초성 fallback
+  const initials = getInitialsListWithSpaces(normalizedText).list;
+  const keywordChars = Array.from(normalizedKeyword);
+
+  let idx = 0;
+  for (const char of keywordChars) {
+    if (/^[ㄱ-ㅎ]$/.test(char)) {
+      if (initials[idx] !== char) return false;
+    } else {
+      if (normalizedText[idx] !== char) return false;
+    }
+    idx++;
+  }
+
+  return true;
+}
+
+function highlightText(text: string, keyword: string): string {
+  const normalizedText = convertToSearchableText(text);
+  const normalizedKeyword = convertToSearchableText(keyword);
+
+  const baseMatch = normalizedText.indexOf(normalizedKeyword);
+  if (baseMatch !== -1) {
+    return (
+      text.slice(0, baseMatch) +
+      `<mark>${text.slice(baseMatch, baseMatch + keyword.length)}</mark>` +
+      text.slice(baseMatch + keyword.length)
+    );
+  }
+
+  // 초성 fallback highlight
+  const { list: initials, positions } =
+    getInitialsListWithSpaces(normalizedText);
+  const keywordChars = Array.from(normalizedKeyword);
+
+  let matched = true;
+  for (let i = 0; i < keywordChars.length; i++) {
+    const k = keywordChars[i];
+    if (/^[ㄱ-ㅎ]$/.test(k)) {
+      if (initials[i] !== k) {
+        matched = false;
+        break;
+      }
+    } else {
+      if (normalizedText[i] !== k) {
+        matched = false;
+        break;
+      }
+    }
+  }
+
+  if (!matched) return text;
+
+  const start = positions[0];
+  const end = positions[keywordChars.length - 1] + 1;
+
+  return (
+    text.slice(0, start) +
+    `<mark>${text.slice(start, end)}</mark>` +
+    text.slice(end)
+  );
+}
+
+export function fullTextSearch<T extends { [key: string]: any }>({
   data,
   searchRequirement,
-  searchFilterText,
 }: {
-  data: Array<T>;
-  searchRequirement: Array<{
-    value: string;
-    removeCharacters?: string;
-  }>;
-  searchFilterText: string;
-}) => {
-  if (!searchFilterText) return data;
+  data: T[];
+  searchRequirement: FullTextSearchRequirement<T>[];
+}): T[] {
+  if (!data || !searchRequirement?.length) return data;
 
   return data.filter((item) =>
-    searchRequirement.some((req) => {
-      const value = item[req.value];
-      if (typeof value !== 'string') return false;
+    searchRequirement.every(({ value, keywords }) => {
+      const rawValue = item[value];
+      if (!rawValue || !keywords.length) return true;
 
-      const converted = req.removeCharacters
-        ? value.replace(
-            new RegExp(`[${escapeRegExp(req.removeCharacters)}]`, 'g'),
-            '',
-          )
-        : value;
-
-      const textMatched = new RegExp(escapeRegExp(searchFilterText), 'i').test(
-        converted,
+      return keywords.every((keyword) =>
+        matchKeyword(String(rawValue), keyword),
       );
-      if (textMatched) return true;
-
-      const isPureInitial = isChosungOnly(searchFilterText);
-      if (isPureInitial) {
-        const { list } = getInitialsListWithSpaces(converted);
-        return list.join(' ').includes(searchFilterText);
-      }
-
-      return false;
     }),
   );
-};
+}
 
-// 최신 검색 (다중 필드 AND 조건)
-export const fullTextSearch = <T extends { [Key: string]: any }>({
-  data,
+export function getFullTextSearchHighlights<T extends { [key: string]: any }>({
+  item,
   searchRequirement,
 }: {
-  data: Array<T>;
-  searchRequirement: Array<{
-    value: string;
-    keywords: string[];
-    removeCharacters?: string;
-  }>;
-}) => {
-  return data.filter((item) => fullTextSearchCore(item, searchRequirement));
-};
+  item: T;
+  searchRequirement: FullTextSearchRequirement<T>[];
+}): Partial<Record<keyof T, string>> {
+  const highlights: Partial<Record<keyof T, string>> = {};
 
-// 하이라이팅 포함 버전
-export const fullTextSearchWithHighlight = <T extends { [Key: string]: any }>({
-  data,
-  searchRequirement,
-}: {
-  data: Array<T>;
-  searchRequirement: Array<{
-    value: string;
-    keywords: string[];
-    removeCharacters?: string;
-  }>;
-}): Array<{ item: T; highlights: Partial<Record<keyof T, string>> }> => {
-  return data
-    .map((item) => {
-      let matched = false;
-      const highlights: Partial<Record<keyof T, string>> = {};
+  for (const { value, keywords } of searchRequirement) {
+    const rawValue = item[value];
+    if (!rawValue || !keywords.length) continue;
 
-      for (const req of searchRequirement) {
-        const key = req.value as keyof T;
-        const raw = item[key];
-        if (typeof raw !== 'string') continue;
+    const originalText = String(rawValue);
 
-        const converted = req.removeCharacters
-          ? raw.replace(
-              new RegExp(`[${escapeRegExp(req.removeCharacters)}]`, 'g'),
-              '',
-            )
-          : raw;
-
-        for (const keyword of req.keywords) {
-          if (!keyword.trim()) continue;
-
-          // 일반 문자열 우선
-          const regex = new RegExp(escapeRegExp(keyword), 'gi');
-          if (regex.test(converted)) {
-            matched = true;
-            highlights[key] = raw.replace(
-              regex,
-              (m: string) => `<mark>${m}</mark>`,
-            );
-            break;
-          }
-
-          // 초성 fallback
-          if (isChosungOnly(keyword)) {
-            const { list } = getInitialsListWithSpaces(converted);
-            const initialStr = list.join(' ');
-            if (initialStr.includes(keyword)) {
-              matched = true;
-              highlights[key] = raw; // 따로 강조할 방법은 없음 (초성 매치라서)
-              break;
-            }
-          }
-        }
+    for (const keyword of keywords) {
+      if (matchKeyword(originalText, keyword)) {
+        highlights[value] = highlightText(originalText, keyword);
+        break;
       }
+    }
+  }
 
-      return matched ? { item, highlights } : null;
-    })
-    .filter(Boolean) as Array<{
-    item: T;
-    highlights: Partial<Record<keyof T, string>>;
-  }>;
-};
-
-// 핵심 로직 (AND)
-const fullTextSearchCore = <T extends { [Key: string]: any }>(
-  dataItem: T,
-  searchRequirement: Array<{
-    value: string;
-    keywords: string[];
-    removeCharacters?: string;
-  }>,
-): boolean => {
-  return searchRequirement.every((req) => {
-    const value = dataItem[req.value];
-    if (typeof value !== 'string') return false;
-
-    const keywords = req.keywords?.filter((k) => k.trim());
-    if (!keywords.length) return true;
-
-    const converted = req.removeCharacters
-      ? value.replace(
-          new RegExp(`[${escapeRegExp(req.removeCharacters)}]`, 'g'),
-          '',
-        )
-      : value;
-
-    return keywords.some((keyword) => {
-      const textMatched = new RegExp(escapeRegExp(keyword), 'i').test(
-        converted,
-      );
-      if (textMatched) return true;
-
-      const isPureInitial = isChosungOnly(keyword);
-      if (isPureInitial) {
-        const { list } = getInitialsListWithSpaces(converted);
-        return list.join(' ').includes(keyword);
-      }
-
-      return false;
-    });
-  });
-};
-
-// 초성만으로 이루어졌는지 판단
-const isChosungOnly = (str: string): boolean => /^[ㄱ-ㅎ\s]+$/.test(str);
-
-// 단어별 초성 리스트 반환
-const getInitialsListWithSpaces = (text: string): { list: string[] } => {
-  const words = text.split(/\s+/);
-  return {
-    list: words.map((word) =>
-      [...word]
-        .map((char) => {
-          const code = char.charCodeAt(0);
-          if (code >= 0xac00 && code <= 0xd7a3) {
-            const cho = Math.floor((code - 0xac00) / 588);
-            return 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'[cho];
-          }
-          return '';
-        })
-        .join(''),
-    ),
-  };
-};
-
-// 정규식 이스케이프
-const escapeRegExp = (string: string) =>
-  string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return highlights;
+}
