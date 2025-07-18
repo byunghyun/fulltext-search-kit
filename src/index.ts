@@ -15,16 +15,37 @@ export const returnFullTextSearchFilteredData = <
   }>;
   searchFilterText: string;
 }) => {
-  if (!searchFilterText) {
-    return data;
-  }
+  if (!searchFilterText) return data;
 
-  return data.filter((item) => {
-    return fullTextSearchCoreLegacy(item, searchRequirement, searchFilterText);
-  });
+  return data.filter((item) =>
+    searchRequirement.some((req) => {
+      const value = item[req.value];
+      if (typeof value !== 'string') return false;
+
+      const converted = req.removeCharacters
+        ? value.replace(
+            new RegExp(`[${escapeRegExp(req.removeCharacters)}]`, 'g'),
+            '',
+          )
+        : value;
+
+      const textMatched = new RegExp(escapeRegExp(searchFilterText), 'i').test(
+        converted,
+      );
+      if (textMatched) return true;
+
+      const isPureInitial = isChosungOnly(searchFilterText);
+      if (isPureInitial) {
+        const { list } = getInitialsListWithSpaces(converted);
+        return list.join(' ').includes(searchFilterText);
+      }
+
+      return false;
+    }),
+  );
 };
 
-// 최신 검색 함수
+// 최신 검색 (다중 필드 AND 조건)
 export const fullTextSearch = <T extends { [Key: string]: any }>({
   data,
   searchRequirement,
@@ -36,44 +57,74 @@ export const fullTextSearch = <T extends { [Key: string]: any }>({
     removeCharacters?: string;
   }>;
 }) => {
-  return data.filter((item) => {
-    return fullTextSearchCore(item, searchRequirement);
-  });
+  return data.filter((item) => fullTextSearchCore(item, searchRequirement));
 };
 
-// 레거시 core
-const fullTextSearchCoreLegacy = <T extends { [Key: string]: any }>(
-  dataItem: T,
+// 하이라이팅 포함 버전
+export const fullTextSearchWithHighlight = <T extends { [Key: string]: any }>({
+  data,
+  searchRequirement,
+}: {
+  data: Array<T>;
   searchRequirement: Array<{
     value: string;
+    keywords: string[];
     removeCharacters?: string;
-  }>,
-  searchFilterText: string,
-): boolean => {
-  return searchRequirement.some((searchItem) => {
-    const value = dataItem[searchItem.value];
-    if (typeof value !== 'string') return false;
+  }>;
+}): Array<{ item: T; highlights: Partial<Record<keyof T, string>> }> => {
+  return data
+    .map((item) => {
+      let matched = false;
+      const highlights: Partial<Record<keyof T, string>> = {};
 
-    const convertedText = searchItem?.removeCharacters
-      ? value.replace(
-          new RegExp(`[${escapeRegExp(searchItem.removeCharacters)}]`, 'g'),
-          '',
-        )
-      : value;
+      for (const req of searchRequirement) {
+        const key = req.value as keyof T;
+        const raw = item[key];
+        if (typeof raw !== 'string') continue;
 
-    const isPureInitial = isPureChosung(searchFilterText);
+        const converted = req.removeCharacters
+          ? raw.replace(
+              new RegExp(`[${escapeRegExp(req.removeCharacters)}]`, 'g'),
+              '',
+            )
+          : raw;
 
-    if (isPureInitial) {
-      const { list } = getInitialsListWithSpaces(convertedText);
-      const initialsWithSpace = list.join(' ');
-      return initialsWithSpace.includes(searchFilterText);
-    }
+        for (const keyword of req.keywords) {
+          if (!keyword.trim()) continue;
 
-    return new RegExp(escapeRegExp(searchFilterText), 'i').test(convertedText);
-  });
+          // 일반 문자열 우선
+          const regex = new RegExp(escapeRegExp(keyword), 'gi');
+          if (regex.test(converted)) {
+            matched = true;
+            highlights[key] = raw.replace(
+              regex,
+              (m: string) => `<mark>${m}</mark>`,
+            );
+            break;
+          }
+
+          // 초성 fallback
+          if (isChosungOnly(keyword)) {
+            const { list } = getInitialsListWithSpaces(converted);
+            const initialStr = list.join(' ');
+            if (initialStr.includes(keyword)) {
+              matched = true;
+              highlights[key] = raw; // 따로 강조할 방법은 없음 (초성 매치라서)
+              break;
+            }
+          }
+        }
+      }
+
+      return matched ? { item, highlights } : null;
+    })
+    .filter(Boolean) as Array<{
+    item: T;
+    highlights: Partial<Record<keyof T, string>>;
+  }>;
 };
 
-// 최신 core (다중 키워드 AND 조건)
+// 핵심 로직 (AND)
 const fullTextSearchCore = <T extends { [Key: string]: any }>(
   dataItem: T,
   searchRequirement: Array<{
@@ -82,58 +133,59 @@ const fullTextSearchCore = <T extends { [Key: string]: any }>(
     removeCharacters?: string;
   }>,
 ): boolean => {
-  return searchRequirement.every((searchItem) => {
-    const value = dataItem[searchItem.value];
+  return searchRequirement.every((req) => {
+    const value = dataItem[req.value];
     if (typeof value !== 'string') return false;
 
-    const keywords = searchItem.keywords?.filter((k) => k.trim() !== '');
-    if (!keywords || keywords.length === 0) return true;
+    const keywords = req.keywords?.filter((k) => k.trim());
+    if (!keywords.length) return true;
 
-    const convertedText = searchItem.removeCharacters
+    const converted = req.removeCharacters
       ? value.replace(
-          new RegExp(`[${escapeRegExp(searchItem.removeCharacters)}]`, 'g'),
+          new RegExp(`[${escapeRegExp(req.removeCharacters)}]`, 'g'),
           '',
         )
       : value;
 
     return keywords.some((keyword) => {
-      const isPureInitial = isPureChosung(keyword);
+      const textMatched = new RegExp(escapeRegExp(keyword), 'i').test(
+        converted,
+      );
+      if (textMatched) return true;
 
+      const isPureInitial = isChosungOnly(keyword);
       if (isPureInitial) {
-        const { list } = getInitialsListWithSpaces(convertedText);
-        const initialsWithSpace = list.join(' ');
-        return initialsWithSpace.includes(keyword);
+        const { list } = getInitialsListWithSpaces(converted);
+        return list.join(' ').includes(keyword);
       }
 
-      return new RegExp(escapeRegExp(keyword), 'i').test(convertedText);
+      return false;
     });
   });
 };
 
-// 초성 리스트 생성 (단어 단위 + 띄어쓰기 유지)
+// 초성만으로 이루어졌는지 판단
+const isChosungOnly = (str: string): boolean => /^[ㄱ-ㅎ\s]+$/.test(str);
+
+// 단어별 초성 리스트 반환
 const getInitialsListWithSpaces = (text: string): { list: string[] } => {
   const words = text.split(/\s+/);
-  const list: string[] = [];
-
-  for (const word of words) {
-    const wordInitials: string[] = [];
-    for (let char of word) {
-      const code = char.charCodeAt(0);
-      if (code >= 0xac00 && code <= 0xd7a3) {
-        const cho = Math.floor((code - 0xac00) / 588);
-        wordInitials.push('ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'[cho]);
-      }
-    }
-    list.push(wordInitials.join(''));
-  }
-
-  return { list };
+  return {
+    list: words.map((word) =>
+      [...word]
+        .map((char) => {
+          const code = char.charCodeAt(0);
+          if (code >= 0xac00 && code <= 0xd7a3) {
+            const cho = Math.floor((code - 0xac00) / 588);
+            return 'ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'[cho];
+          }
+          return '';
+        })
+        .join(''),
+    ),
+  };
 };
 
-// 초성인지 판단 (정확하게)
-const isPureChosung = (str: string): boolean => /^[ㄱ-ㅎ\s]+$/.test(str);
-
-// 정규식 escape 유틸
-const escapeRegExp = (string: string) => {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-};
+// 정규식 이스케이프
+const escapeRegExp = (string: string) =>
+  string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
