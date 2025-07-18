@@ -85,18 +85,17 @@ const fullTextSearchCore = <T extends { [Key: string]: any }>(
     const value = dataItem[searchItem.value];
     if (typeof value !== 'string') return false;
 
-    // 키워드가 없으면 필터링 조건 없음 → 통과
-    if (!searchItem.keywords?.length || searchItem.keywords[0] === '')
-      return true;
+    const keywords = searchItem.keywords?.filter((k) => k.trim() !== '');
+    if (!keywords || keywords.length === 0) return true;
 
-    const convertedText = searchItem?.removeCharacters
+    const convertedText = searchItem.removeCharacters
       ? value.replace(
           new RegExp(`[${escapeRegExp(searchItem.removeCharacters)}]`, 'g'),
           '',
         )
       : value;
 
-    return searchItem.keywords.some((keyword) => {
+    const isMatched = keywords.some((keyword) => {
       const isKorean = /[ㄱ-ㅎ가-힣]/.test(keyword);
 
       if (isKorean) {
@@ -107,6 +106,9 @@ const fullTextSearchCore = <T extends { [Key: string]: any }>(
 
       return new RegExp(escapeRegExp(keyword), 'i').test(convertedText);
     });
+
+    // 핵심 조건: 값이 있는데 매치 안 되면 false
+    return isMatched;
   });
 };
 
