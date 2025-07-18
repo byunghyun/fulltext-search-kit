@@ -24,7 +24,7 @@ export const returnFullTextSearchFilteredData = <
   });
 };
 
-// 최신 fullTextSearch (권장)
+// 최신 fullTextSearch (권장 사용)
 export const fullTextSearch = <T extends { [Key: string]: any }>({
   data,
   searchRequirement,
@@ -41,7 +41,7 @@ export const fullTextSearch = <T extends { [Key: string]: any }>({
   });
 };
 
-// 레거시 검색 로직 (단일 텍스트)
+// 레거시 단일 문자열 검색용 core
 const fullTextSearchCoreLegacy = <T extends { [Key: string]: any }>(
   dataItem: T,
   searchRequirement: Array<{
@@ -63,18 +63,16 @@ const fullTextSearchCoreLegacy = <T extends { [Key: string]: any }>(
 
     const isKorean = /[ㄱ-ㅎ가-힣]/.test(searchFilterText);
     if (isKorean) {
-      const { list, joined } = getInitialsListAndJoined(convertedText);
-      return (
-        list.some((initials) => initials.includes(searchFilterText)) ||
-        joined.includes(searchFilterText)
-      );
+      const { list } = getInitialsListWithSpaces(convertedText);
+      const initialsWithSpace = list.join(' ');
+      return initialsWithSpace.includes(searchFilterText);
     }
 
     return new RegExp(escapeRegExp(searchFilterText), 'i').test(convertedText);
   });
 };
 
-// 최신 검색 로직 (다중 키워드)
+// 최신 다중 키워드용 core
 const fullTextSearchCore = <T extends { [Key: string]: any }>(
   dataItem: T,
   searchRequirement: Array<{
@@ -83,9 +81,13 @@ const fullTextSearchCore = <T extends { [Key: string]: any }>(
     removeCharacters?: string;
   }>,
 ): boolean => {
-  return searchRequirement.some((searchItem) => {
+  return searchRequirement.every((searchItem) => {
     const value = dataItem[searchItem.value];
     if (typeof value !== 'string') return false;
+
+    // 키워드가 없으면 필터링 조건 없음 → 통과
+    if (!searchItem.keywords?.length || searchItem.keywords[0] === '')
+      return true;
 
     const convertedText = searchItem?.removeCharacters
       ? value.replace(
@@ -98,11 +100,9 @@ const fullTextSearchCore = <T extends { [Key: string]: any }>(
       const isKorean = /[ㄱ-ㅎ가-힣]/.test(keyword);
 
       if (isKorean) {
-        const { list, joined } = getInitialsListAndJoined(convertedText);
-        return (
-          list.some((initials) => initials.includes(keyword)) ||
-          joined.includes(keyword)
-        );
+        const { list } = getInitialsListWithSpaces(convertedText);
+        const initialsWithSpace = list.join(' ');
+        return initialsWithSpace.includes(keyword);
       }
 
       return new RegExp(escapeRegExp(keyword), 'i').test(convertedText);
@@ -110,13 +110,10 @@ const fullTextSearchCore = <T extends { [Key: string]: any }>(
   });
 };
 
-// 초성 추출 유틸
-const getInitialsListAndJoined = (
-  text: string,
-): { list: string[]; joined: string } => {
+// 초성 리스트 생성 (단어 단위 + 띄어쓰기 유지)
+const getInitialsListWithSpaces = (text: string): { list: string[] } => {
   const words = text.split(/\s+/);
   const list: string[] = [];
-  const initials: string[] = [];
 
   for (const word of words) {
     const wordInitials: string[] = [];
@@ -127,15 +124,13 @@ const getInitialsListAndJoined = (
         wordInitials.push('ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'[cho]);
       }
     }
-    const joined = wordInitials.join('');
-    list.push(joined);
-    initials.push(...wordInitials);
+    list.push(wordInitials.join(''));
   }
 
-  return { list, joined: initials.join('') };
+  return { list };
 };
 
-// 정규식 이스케이프
+// 정규식 escape 유틸
 const escapeRegExp = (string: string) => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
