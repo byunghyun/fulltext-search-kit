@@ -12,7 +12,9 @@
 - Supports multiple search requirements
 - Handles special character removal
 - Optimized for Korean text
-- 한국어 초성 검색도 지원합니다.
+- Supports 초성 (initial consonant) search in Korean
+- Supports mixed search terms like ‘한ㄱㅇ’ (partially composed + initials)
+- Highlights matched search terms
 
 ## Live Demo
 
@@ -22,13 +24,13 @@
 
 You can install the library using npm:
 
-```bash
+```
 npm install fulltext-search-kit
 ```
 
 or using yarn:
 
-```bash
+```
 yarn add fulltext-search-kit
 ```
 
@@ -36,83 +38,128 @@ yarn add fulltext-search-kit
 
 ### Importing the Library
 
-To use the library, import the returnFullTextSearchFilteredData function:
+To use the latest full-text search functionality:
 
-```typescript
-import { fullTextSearch } from 'fulltext-search-kit';
+```
+import { fullTextSearch, getFullTextSearchHighlights } from 'fulltext-search-kit';
 ```
 
-⚠️ [Deprecated Notice]
-The returnFullTextSearchFilteredData function will be deprecated in future versions.
-Please use the fullTextSearch function instead for all new development.
+> ⚠️ **Deprecated Notice**  
+> `returnFullTextSearchFilteredData` will be removed in version 3.0.0.  
+> Please migrate to `fullTextSearch` and `getFullTextSearchHighlights` for all new development.
 
-Example
-Here is a simple example demonstrating how to use the
-returnFullTextSearchFilteredData function:
+### Basic Example
 
-```typescript
+```
 const data = [
   { name: 'John Doe01012', age: 30, phoneNumber: '010-2345-7890' },
   { name: 'Jane Smith01023', age: 25, phoneNumber: '010-1234-5678' },
   { name: 'Alice Johnson01023', age: 35, phoneNumber: '010-5500-4455' },
 ];
 
-const searchRequirement = [
-  { value: 'name' },
-  { value: 'phoneNumber', removeCharacters: '-' },
-];
-const searchFilterText = 'Jane';
-// const searchFilterText = '010123';
-
-const filteredData = fullTextSearch<T>({
+const filteredData = fullTextSearch({
   data,
-  searchRequirement,
-  searchFilterText,
+  searchRequirement: [
+    { value: 'name', keywords: ['Jane'] },
+    { value: 'phoneNumber', keywords: ['0101234'] },
+  ],
 });
+```
 
-console.log(filteredData);
+### Highlight Example
+
+```
+const highlights = getFullTextSearchHighlights({
+  item: data[1],
+  searchRequirement: [
+    { value: 'name', keywords: ['Jane'] },
+    { value: 'phoneNumber', keywords: ['0101234'] },
+  ],
+});
+```
+
+### Korean Initials & Mixed Term Example
+
+```
+const filtered = fullTextSearch({
+  data,
+  searchRequirement: [
+    { value: 'name', keywords: ['한ㄱㅇ'] }, // matches 한가영
+  ],
+});
 ```
 
 ## API
 
 ### fullTextSearch
 
-Filters an array of objects based on the search requirements and filter text.
+Filters an array of objects based on search requirements.
 
-Parameters
+#### Parameters
 
-- data (Array<T>): The data to search through.
-- searchRequirement (Array<{ value: string; removeCharacters?: string; }>): The requirements for the search.
+- `data: Array<T>`: The data to search through.
+- `searchRequirement: Array<{ value: string; keywords: string[] }>`: The field names and search terms.
 
-```example
-  text: 010-0000-0000,
-  removeCharacters: '-'
-  return: 01000000000
+#### Returns
+
+- `Array<T>`: The filtered data.
+
+---
+
+### getFullTextSearchHighlights
+
+Returns the matched highlights from a specific item.
+
+#### Parameters
+
+- `item: T`: The data item to check.
+- `searchRequirement: Array<{ value: string; keywords: string[] }>`: The fields and search keywords.
+
+#### Returns
+
+- `Partial<Record<keyof T, string>>`: Object with `<mark>`-tagged matched highlights.
+
+---
+
+## Deprecated Functions
+
+### returnFullTextSearchFilteredData ⚠️ _Deprecated_
+
+> This function will be removed in **v3.0.0**.  
+> Please migrate to `fullTextSearch`.
+
+```
+const filteredData = returnFullTextSearchFilteredData({
+  data,
+  searchRequirement: [
+    { value: 'name' },
+    { value: 'phoneNumber', removeCharacters: '-' },
+  ],
+  searchFilterText: 'Jane',
+});
 ```
 
-- searchFilterText (string): The text to filter the data by.
+---
 
-Returns
+## Internal Functions (For Contributors)
 
-- Array<T>: The filtered data.
+- `fullTextSearchCore`: Low-level core function
+- `escapeRegExp`: Escapes RegExp special chars
+- `characterPatternCheckerCore`: Korean pattern generator
+- `getInitialsListWithSpaces`: Extracts 초성 list with spacing logic
+- `highlightText`: Internal highlighter engine
 
-## Internal Functions
+---
 
-### fullTextSearchCore
+## Changelog (v2.x → v3 Preview)
 
-- Core function for full-text search logic. This function is used internally by returnFullTextSearchFilteredData.
+- ✅ Supports mixed search keywords like `한ㄱㅇ`
+- ✅ Highlights matched values
+- ✅ `keywords` now supports multiple per field
+- ✅ `getFullTextSearchHighlights` function added
+- ⚠️ `returnFullTextSearchFilteredData` marked as deprecated
 
-### escapeRegExp
-
-- Escapes special characters in a string for use in a regular expression.
-
-### characterPatternCheckerCore
-
-- Checks and returns a pattern for Korean characters.
-
-### createInitialLetterMatcher
-
-- Creates a regular expression matcher for initial Korean letters.
+---
 
 ## Contributing
 
